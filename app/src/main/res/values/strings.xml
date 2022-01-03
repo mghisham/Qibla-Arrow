@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Qibla Arrow</string>
+    <string name="gps_settings_title">GPS settings</string>
+    <string name="gps_settings_text">GPS is not enabled. Do you want to go to settings menu?</string>
+    <string name="settings_button_ok">Settings</string>
+    <string name="settings_button_cancel">Cancel</string>
+    <string name="msg_permission_not_granted_yet">Location access not available yet</string>
+    <string name="msg_permission_granted">Location Access Granted, press GPS button now.</string>
+    <string name="toast_permission_required">This app requires Access Location</string>
+    <string name="your_location">Your Location:</string>
+    <string name="location_not_ready">Location not ready, please press button again.</string>
+    <string name="qibla_direction">Kaaba Direction:</string>
+    <string name="pls_enable_location">Please turn on Location and press the button again.</string>
+    <string name="degree_from_north">degrees from the north.</string>
+    <string name="using_last_location">using last location.</string>
+</resources>

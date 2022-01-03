@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nav_qibla"
+    app:startDestination="@id/compass_frag">
+
+    <fragment
+        android:id="@+id/compass_frag"
+        android:name="apps.hm.qiblaarrow.CompassFragment"
+        android:label="@string/app_name" />
+</navigation>
