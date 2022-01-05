@@ -65,7 +65,6 @@
         android:contentDescription="@string/app_name"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:srcCompat="@drawable/ic_my_location"
-        app:tint="?attr/colorPrimaryDark" />
+        app:srcCompat="@drawable/ic_my_location" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

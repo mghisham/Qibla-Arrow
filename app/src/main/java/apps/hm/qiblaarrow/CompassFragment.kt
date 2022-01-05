@@ -1,18 +1,15 @@
 package apps.hm.qiblaarrow
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.content.Context
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
-import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.View.INVISIBLE
 import android.view.ViewGroup
-import android.view.WindowManager
 import android.view.animation.Animation
 import android.view.animation.RotateAnimation
 import android.widget.Toast
@@ -20,6 +17,9 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import apps.hm.qiblaarrow.databinding.FragmentCompassBinding
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.sin
 
 class CompassFragment : Fragment() {
     private lateinit var binding: FragmentCompassBinding
@@ -46,12 +46,10 @@ class CompassFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
-        //////////////////////////////////////////
         binding.imgQiblaArrow.visibility = INVISIBLE
         binding.imgQiblaArrow.visibility = View.GONE
         prefs = requireContext().getSharedPreferences("", Context.MODE_PRIVATE)
-        gps = GPSTracker(context)
+        gps = GPSTracker(requireContext())
         setupCompass()
         binding.btnGps.setOnClickListener { fetchGPS() }
     }
@@ -59,61 +57,45 @@ class CompassFragment : Fragment() {
     override fun onStart() {
         super.onStart()
         Log.d(TAG, "start compass")
-        if (compass != null) {
-            compass?.start()
-        }
-
+//        compass?.start()
     }
 
     override fun onPause() {
         super.onPause()
-        if (compass != null) {
-            compass?.stop()
-        }
+        compass?.stop()
+
     }
 
     override fun onResume() {
         super.onResume()
-        if (compass != null) {
-            compass?.start()
-        }
+        compass?.start()
     }
 
     override fun onStop() {
         super.onStop()
         Log.d(TAG, "stop compass")
-        if (compass != null) {
-            compass?.stop()
-        }
+//        compass?.stop()
     }
 
     private fun setupCompass() {
-        val permissionGranted = GetBoolean("permission_granted")
-        if (permissionGranted!!) {
-            getBearing()
-        } else {
-            binding.textKaabaDir.text = resources.getString(R.string.msg_permission_not_granted_yet)
-            binding.textCurrentLoc.text =
-                resources.getString(R.string.msg_permission_not_granted_yet)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                ActivityCompat.requestPermissions(
-                    requireActivity(),
-                    arrayOf(
-                        Manifest.permission.ACCESS_FINE_LOCATION,
-                        Manifest.permission.ACCESS_COARSE_LOCATION
-                    ),
-                    1
-                )
+        binding.textKaabaDir.text = resources.getString(R.string.msg_permission_not_granted_yet)
+        binding.textCurrentLoc.text =
+            resources.getString(R.string.msg_permission_not_granted_yet)
+        ActivityCompat.requestPermissions(
+            requireActivity(),
+            arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ),
+            1
+        )
+        compass = context?.let { Compass(it) }
+        compass?.setListener(object : Compass.CompassListener {
+            override fun onNewAzimuth(azimuth: Float) {
+                adjustGambarDial(azimuth)
+                adjustArrowQiblat(azimuth)
             }
-        }
-
-        compass = Compass(context)
-        val cl = Compass.CompassListener { azimuth ->
-            // adjustArrow(azimuth);
-            adjustGambarDial(azimuth)
-            adjustArrowQiblat(azimuth)
-        }
-        compass?.setListener(cl)
+        })
     }
 
 
@@ -135,9 +117,9 @@ class CompassFragment : Fragment() {
     private fun adjustArrowQiblat(azimuth: Float) {
         //Log.d(TAG, "will set rotation from " + currentAzimuth + " to "                + azimuth);
 
-        val kiblat_derajat = GetFloat("kiblat_derajat")!!
+        val qiblaDir = retrieveFloat()
         val an = RotateAnimation(
-            -currentAzimuth + kiblat_derajat, -azimuth,
+            -currentAzimuth + qiblaDir, -azimuth,
             Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF,
             0.5f
         )
@@ -146,7 +128,7 @@ class CompassFragment : Fragment() {
         an.repeatCount = 0
         an.fillAfter = true
         binding.imgQiblaArrow.startAnimation(an)
-        if (kiblat_derajat > 0) {
+        if (qiblaDir > 0) {
             binding.imgQiblaArrow.visibility = View.VISIBLE
         } else {
             binding.imgQiblaArrow.visibility = INVISIBLE
@@ -154,18 +136,14 @@ class CompassFragment : Fragment() {
         }
     }
 
-    @SuppressLint("MissingPermission")
-    fun getBearing() {
+    private fun getBearing() {
         // Get the location manager
 
-        val kiblat_derajat = GetFloat("kiblat_derajat")!!
-        if (kiblat_derajat > 0.0001) {
+        val qiblaDir = retrieveFloat()
+        if (qiblaDir > 0.0001) {
             binding.textCurrentLoc.text =
-                resources.getString(R.string.your_location) + " " + resources.getString(R.string.using_last_location)
-            binding.textKaabaDir.text =
-                resources.getString(R.string.qibla_direction) + " " + kiblat_derajat + " " + resources.getString(
-                    R.string.degree_from_north
-                )
+                getString(R.string.your_location, gps.latitude, gps.longitude)
+            binding.textKaabaDir.text = getString(R.string.qibla_direction, qiblaDir)
             // MenuItem item = menu.findItem(R.id.gps);
 
             binding.btnGps.setImageDrawable(
@@ -189,9 +167,9 @@ class CompassFragment : Fragment() {
         when (requestCode) {
             1 -> {
                 // If request is cancelled, the result arrays are empty.
-                if (grantResults.size > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     // permission was granted, yay! Do the
-                    SaveBoolean("permission_granted", true)
+                    getBearing()
                     binding.textKaabaDir.text = resources.getString(R.string.msg_permission_granted)
                     binding.textCurrentLoc.text =
                         resources.getString(R.string.msg_permission_granted)
@@ -204,7 +182,6 @@ class CompassFragment : Fragment() {
                         resources.getString(R.string.toast_permission_required),
                         Toast.LENGTH_LONG
                     ).show()
-//                    finish()
                 }
                 return
             }
@@ -212,61 +189,27 @@ class CompassFragment : Fragment() {
         // permissions this app might request
     }
 
-
-    fun SaveString(Judul: String, tex: String) {
+    private fun saveFloat(value: Float?) {
         val edit = prefs.edit()
-        edit.putString(Judul, tex)
+        edit.putFloat(KEY_LOC, value ?: 0f)
         edit.apply()
     }
 
-    fun GetString(Judul: String): String? {
-        return prefs.getString(Judul, "")
-    }
-
-    fun SaveBoolean(Judul: String, bbb: Boolean?) {
-        val edit = prefs.edit()
-        edit.putBoolean(Judul, bbb!!)
-        edit.apply()
-    }
-
-    fun GetBoolean(Judul: String): Boolean? {
-        return prefs.getBoolean(Judul, false)
-    }
-
-    fun Savelong(Judul: String, bbb: Long?) {
-        val edit = prefs.edit()
-        edit.putLong(Judul, bbb!!)
-        edit.apply()
-    }
-
-    fun Getlong(Judul: String): Long? {
-        return prefs.getLong(Judul, 0)
-    }
-
-    fun SaveFloat(Judul: String, bbb: Float?) {
-        val edit = prefs.edit()
-        edit.putFloat(Judul, bbb!!)
-        edit.apply()
-    }
-
-    fun GetFloat(Judul: String): Float? {
-        return prefs.getFloat(Judul, 0f)
+    private fun retrieveFloat(value: String = KEY_LOC): Float {
+        return prefs.getFloat(value, 0f)
     }
 
     private fun fetchGPS() {
-        var result = 0.0
-        gps = GPSTracker(context)
+        val result: Double
+        gps = GPSTracker(requireContext())
         if (gps.canGetLocation()) {
-            val latitude = gps.getLatitude()
-            val longitude = gps.getLongitude()
+            val latitude = gps.latitude
+            val longitude = gps.longitude
             // \n is for new line
-            binding.textCurrentLoc.text =
-                resources.getString(R.string.your_location) + "\nLat: " + latitude + " Long: " + longitude
+            binding.textCurrentLoc.text = getString(R.string.your_location, latitude, longitude)
             // Toast.makeText(getApplicationContext(), "Lokasi anda: - \nLat: " + latitude + "\nLong: " + longitude, Toast.LENGTH_LONG).show();
             Log.e("TAG", "GPS is on")
-            val lat_saya = gps.getLatitude()
-            val lon_saya = gps.getLongitude()
-            if (lat_saya < 0.001 && lon_saya < 0.001) {
+            if (latitude < 0.001 && longitude < 0.001) {
                 // img_qibla_arrow.isShown(false);
                 binding.imgQiblaArrow.visibility = INVISIBLE
                 binding.imgQiblaArrow.visibility = View.GONE
@@ -287,27 +230,22 @@ class CompassFragment : Fragment() {
                     )
                 )
                 val longitude2 =
-                    39.826206 // ka'bah Position https://www.latlong.net/place/kaaba-mecca-saudi-arabia-12639.html
+                    KA_BA_POSITION_LONGITUDE // ka'bah Position https://www.latlong.net/place/kaaba-mecca-saudi-arabia-12639.html
                 val latitude2 =
-                    Math.toRadians(21.422487) // ka'bah Position https://www.latlong.net/place/kaaba-mecca-saudi-arabia-12639.html
-                val latitude1 = Math.toRadians(lat_saya)
-                val longDiff = Math.toRadians(longitude2 - lon_saya)
-                val y = Math.sin(longDiff) * Math.cos(latitude2)
-                val x = Math.cos(latitude1) * Math.sin(latitude2) - Math.sin(latitude1) * Math.cos(
-                    latitude2
-                ) * Math.cos(longDiff)
-                result = (Math.toDegrees(Math.atan2(y, x)) + 360) % 360
+                    Math.toRadians(KA_BA_POSITION_LATITUDE) // ka'bah Position https://www.latlong.net/place/kaaba-mecca-saudi-arabia-12639.html
+                val latitude1 = Math.toRadians(latitude)
+                val longDiff = Math.toRadians(longitude2 - longitude)
+                val y = sin(longDiff) * cos(latitude2)
+                val x =
+                    cos(latitude1) * sin(latitude2) - sin(latitude1) * cos(latitude2) * cos(longDiff)
+                result = (Math.toDegrees(atan2(y, x)) + 360) % 360
                 val result2 = result.toFloat()
-                SaveFloat("kiblat_derajat", result2)
+                saveFloat(value = result2)
                 binding.textKaabaDir.text =
-                    resources.getString(R.string.qibla_direction) + " " + result2 + " " + resources.getString(
-                        R.string.degree_from_north
-                    )
+                    getString(R.string.qibla_direction, result2)
                 Toast.makeText(
                     context,
-                    resources.getString(R.string.qibla_direction) + " " + result2 + " " + resources.getString(
-                        R.string.degree_from_north
-                    ),
+                    getString(R.string.qibla_direction, result2),
                     Toast.LENGTH_LONG
                 ).show()
                 binding.imgQiblaArrow.visibility = View.VISIBLE
@@ -336,6 +274,9 @@ class CompassFragment : Fragment() {
     }
 
     companion object {
-        private val TAG = CompassFragment.javaClass.simpleName
+        private val TAG = CompassFragment::class.java.simpleName
+        private const val KEY_LOC = "SAVED_LOC"
+        private const val KA_BA_POSITION_LONGITUDE = 39.826206
+        private const val KA_BA_POSITION_LATITUDE = 21.422487
     }
 }
