@@ -1,12 +1,11 @@
 # Qibla-Arrow
 ---
-Application to show compass and Qibla direction
 
-| ![1](screenshots/screenshot_6.png) | ![2](screenshots/screenshot_1.png) |
+| ![1](screenshots/compass_dark.png) | ![2](screenshots/compass_light.png) |
 |:---:|:---:|
 | 1 Dark Mode | 2 Light Mode |
 
-## Qibla-Arrow works on android 24+ and it uses the following
+## Qibla-Arrow is an Application to show compass and Qibla direction
 
 
 - Material Design & ConstraintLayout
