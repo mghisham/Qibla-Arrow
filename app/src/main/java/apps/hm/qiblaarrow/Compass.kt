@@ -1,16 +1,14 @@
 package apps.hm.qiblaarrow
 
-import android.content.Context
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 
-class Compass(context: Context) : SensorEventListener {
+class Compass(private val sensorManager: SensorManager) : SensorEventListener {
     private var listener: CompassListener? = null
-    private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
-    private val gsensor: Sensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
-    private val msensor: Sensor = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
+    private val gSensor: Sensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+    private val mSensor: Sensor = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
 
     private val mGravity = FloatArray(3)
     private val mGeomagnetic = FloatArray(3)
@@ -20,11 +18,11 @@ class Compass(context: Context) : SensorEventListener {
 
     fun start() {
         sensorManager.registerListener(
-            this, gsensor,
+            this, gSensor,
             SensorManager.SENSOR_DELAY_GAME
         )
         sensorManager.registerListener(
-            this, msensor,
+            this, mSensor,
             SensorManager.SENSOR_DELAY_GAME
         )
     }

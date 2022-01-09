@@ -1,21 +1,16 @@
 package apps.hm.qiblaarrow
 
 import android.annotation.SuppressLint
-import android.app.AlertDialog
 import android.app.Service
-import android.content.Context
 import android.content.Intent
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Bundle
 import android.os.IBinder
-import android.provider.Settings
 import android.util.Log
 
-class GPSTracker(private val mContext: Context) : Service(), LocationListener {
-    // Declaring a Location Manager
-    private lateinit var locationManager: LocationManager
+class GPSTracker(private val locationManager: LocationManager) : Service(), LocationListener {
 
     // flag for GPS status
     private var isGPSEnabled = false
@@ -41,9 +36,6 @@ class GPSTracker(private val mContext: Context) : Service(), LocationListener {
     @SuppressLint("MissingPermission")
     fun fetchLocation(): Location? {
         try {
-            locationManager = mContext
-                .getSystemService(LOCATION_SERVICE) as LocationManager
-
             // getting GPS status
             isGPSEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
             // getting network status
@@ -98,27 +90,6 @@ class GPSTracker(private val mContext: Context) : Service(), LocationListener {
      */
     fun canGetLocation(): Boolean {
         return canGetLocation
-    }
-
-    /**
-     * Function to show settings alert dialog
-     * On pressing Settings button will lauch Settings Options
-     */
-    fun showSettingsAlert() {
-        val alertDialog = AlertDialog.Builder(mContext)
-        // Setting Dialog Title
-        alertDialog.setTitle(mContext.resources.getString(R.string.gps_settings_title))
-        // Setting Dialog Message
-        alertDialog.setMessage(mContext.resources.getString(R.string.gps_settings_text))
-        // On pressing Settings button
-        alertDialog.setPositiveButton(mContext.resources.getString(R.string.settings_button_ok)) { dialog, which ->
-            val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
-            mContext.startActivity(intent)
-        }
-        // on pressing cancel button
-        alertDialog.setNegativeButton(mContext.resources.getString(R.string.settings_button_cancel)) { dialog, which -> dialog.cancel() }
-        // Showing Alert Message
-        alertDialog.show()
     }
 
     override fun onLocationChanged(location: Location) = Unit

@@ -1,18 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <item android:drawable="@color/black" />
+    <item android:drawable="@color/bgColor" />
 
     <item
         android:width="@dimen/dimen_100dp"
-        android:height="@dimen/dimen_100dp"
-        android:bottom="@dimen/dimen_400dp"
-        android:left="@dimen/dimen_400dp"
-        android:right="@dimen/dimen_400dp"
-        android:top="@dimen/dimen_400dp">
+        android:gravity="center"
+        android:height="@dimen/dimen_100dp">
         <bitmap
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:gravity="center"
             android:src="@drawable/app_icon" />
     </item>
 
-</layer-list><!--    @mipmap/ic_launcher-->
+</layer-list>

@@ -1,10 +1,15 @@
-package apps.hm.qiblaarrow
+package apps.hm.qiblaarrow.ui
 
 import android.Manifest
 import android.content.Context
+import android.content.Context.LOCATION_SERVICE
+import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
+import android.hardware.SensorManager
+import android.location.LocationManager
 import android.os.Bundle
+import android.provider.Settings
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -13,22 +18,31 @@ import android.view.ViewGroup
 import android.view.animation.Animation
 import android.view.animation.RotateAnimation
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import apps.hm.qiblaarrow.Compass
+import apps.hm.qiblaarrow.GPSTracker
+import apps.hm.qiblaarrow.PermissionHelper
+import apps.hm.qiblaarrow.R
 import apps.hm.qiblaarrow.databinding.FragmentCompassBinding
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 
 class CompassFragment : Fragment() {
+    private lateinit var locationManager: LocationManager
     private lateinit var binding: FragmentCompassBinding
 
     private var compass: Compass? = null
     private var currentAzimuth: Float = 0.toFloat()
     private lateinit var prefs: SharedPreferences
     private lateinit var gps: GPSTracker
-
+    // Initializing permission helper.
+    val cameraPermission by lazy {
+        PermissionHelper(this@CompassFragment, Manifest.permission.CAMERA)
+    }
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -49,7 +63,8 @@ class CompassFragment : Fragment() {
         binding.imgQiblaArrow.visibility = INVISIBLE
         binding.imgQiblaArrow.visibility = View.GONE
         prefs = requireContext().getSharedPreferences("", Context.MODE_PRIVATE)
-        gps = GPSTracker(requireContext())
+        locationManager = context?.getSystemService(LOCATION_SERVICE) as LocationManager
+        gps = GPSTracker(locationManager)
         setupCompass()
         binding.btnGps.setOnClickListener { fetchGPS() }
     }
@@ -57,24 +72,13 @@ class CompassFragment : Fragment() {
     override fun onStart() {
         super.onStart()
         Log.d(TAG, "start compass")
-//        compass?.start()
-    }
-
-    override fun onPause() {
-        super.onPause()
-        compass?.stop()
-
-    }
-
-    override fun onResume() {
-        super.onResume()
         compass?.start()
     }
 
     override fun onStop() {
         super.onStop()
         Log.d(TAG, "stop compass")
-//        compass?.stop()
+        compass?.stop()
     }
 
     private fun setupCompass() {
@@ -89,7 +93,10 @@ class CompassFragment : Fragment() {
             ),
             1
         )
-        compass = context?.let { Compass(it) }
+        compass = context?.let {
+            val sensorManager = it.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+            Compass(sensorManager)
+        }
         compass?.setListener(object : Compass.CompassListener {
             override fun onNewAzimuth(azimuth: Float) {
                 adjustGambarDial(azimuth)
@@ -177,11 +184,7 @@ class CompassFragment : Fragment() {
                     binding.imgQiblaArrow.visibility = View.GONE
 
                 } else {
-                    Toast.makeText(
-                        context,
-                        resources.getString(R.string.toast_permission_required),
-                        Toast.LENGTH_LONG
-                    ).show()
+                    showToast(getString(R.string.toast_permission_required))
                 }
                 return
             }
@@ -201,13 +204,13 @@ class CompassFragment : Fragment() {
 
     private fun fetchGPS() {
         val result: Double
-        gps = GPSTracker(requireContext())
+        gps = GPSTracker(locationManager)
         if (gps.canGetLocation()) {
             val latitude = gps.latitude
             val longitude = gps.longitude
             // \n is for new line
             binding.textCurrentLoc.text = getString(R.string.your_location, latitude, longitude)
-            // Toast.makeText(getApplicationContext(), "Lokasi anda: - \nLat: " + latitude + "\nLong: " + longitude, Toast.LENGTH_LONG).show();
+            showToast(getString(R.string.your_location, latitude, longitude))
             Log.e("TAG", "GPS is on")
             if (latitude < 0.001 && longitude < 0.001) {
                 // img_qibla_arrow.isShown(false);
@@ -221,7 +224,7 @@ class CompassFragment : Fragment() {
                         R.drawable.ic_my_location
                     )
                 )
-                // Toast.makeText(getApplicationContext(), "Location not ready, Please Restart Application", Toast.LENGTH_LONG).show();
+                showToast("Location not ready, Please Restart Application")
             } else {
                 binding.btnGps.setImageDrawable(
                     ContextCompat.getDrawable(
@@ -251,12 +254,12 @@ class CompassFragment : Fragment() {
                 binding.imgQiblaArrow.visibility = View.VISIBLE
 
             }
-            //  Toast.makeText(getApplicationContext(), "lat_saya: "+lat_saya + "\nlon_saya: "+lon_saya, Toast.LENGTH_LONG).show();
+            showToast(getString(R.string.show_location, latitude, longitude))
         } else {
             // can't get location
             // GPS or Network is not enabled
             // Ask user to enable GPS/network in settings
-            gps.showSettingsAlert()
+            showSettingsAlert()
 
             // img_qibla_arrow.isShown(false);
             binding.imgQiblaArrow.visibility = INVISIBLE
@@ -269,8 +272,29 @@ class CompassFragment : Fragment() {
                     R.drawable.ic_my_location
                 )
             )
-            // Toast.makeText(getApplicationContext(), "Please enable Location first and Restart Application", Toast.LENGTH_LONG).show();
+            showToast("Please enable Location first and Restart Application")
         }
+    }
+
+    /**
+     * Function to show settings alert dialog
+     * On pressing Settings button will lauch Settings Options
+     */
+    private fun showSettingsAlert() {
+        val alertDialog = context?.let { AlertDialog.Builder(it) }
+        // Setting Dialog Title
+        alertDialog?.setTitle(getString(R.string.gps_settings_title))
+        // Setting Dialog Message
+        alertDialog?.setMessage(getString(R.string.gps_settings_text))
+        // On pressing Settings button
+        alertDialog?.setPositiveButton(getString(R.string.settings_button_ok)) { _, _ ->
+            val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+            startActivity(intent)
+        }
+        // on pressing cancel button
+        alertDialog?.setNegativeButton(getString(R.string.settings_button_cancel)) { dialog, _ -> dialog.cancel() }
+        // Showing Alert Message
+        alertDialog?.show()
     }
 
     companion object {

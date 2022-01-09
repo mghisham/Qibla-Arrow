@@ -6,6 +6,6 @@
 
     <fragment
         android:id="@+id/compass_frag"
-        android:name="apps.hm.qiblaarrow.CompassFragment"
+        android:name="apps.hm.qiblaarrow.ui.CompassFragment"
         android:label="@string/app_name" />
 </navigation>

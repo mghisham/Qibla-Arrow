@@ -1,11 +1,13 @@
-package apps.hm.qiblaarrow
+package apps.hm.qiblaarrow.ui
 
 import android.annotation.SuppressLint
 import android.os.Build
 import android.view.View
 import android.view.Window
 import android.view.WindowManager
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.fragment.app.Fragment
 
 @SuppressLint("ObsoleteSdkInt")
 @Suppress("deprecation")
@@ -31,4 +33,8 @@ fun AppCompatActivity.applyFullScreen() {
             )
         }
     }
+}
+
+fun Fragment.showToast(msg: String, duration: Int = Toast.LENGTH_SHORT) {
+    Toast.makeText(context, msg, duration).show()
 }
